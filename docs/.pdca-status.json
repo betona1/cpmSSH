@@ -1,0 +1,41 @@
+{
+  "version": "2.0",
+  "lastUpdated": "2026-03-23T14:19:13.810Z",
+  "activeFeatures": [
+    "runner"
+  ],
+  "primaryFeature": "runner",
+  "features": {
+    "runner": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-03-23T14:19:13.810Z",
+        "lastUpdated": "2026-03-23T14:19:13.810Z"
+      },
+      "lastFile": "F:\\cpm-ssh-terminal\\windows\\runner\\main.cpp"
+    }
+  },
+  "pipeline": {
+    "currentPhase": 1,
+    "level": "Dynamic",
+    "phaseHistory": []
+  },
+  "session": {
+    "startedAt": "2026-03-23T12:57:10.547Z",
+    "onboardingCompleted": false,
+    "lastActivity": "2026-03-23T14:19:13.810Z"
+  },
+  "history": [
+    {
+      "timestamp": "2026-03-23T14:19:13.810Z",
+      "feature": "runner",
+      "phase": "do",
+      "action": "updated"
+    }
+  ]
+}
