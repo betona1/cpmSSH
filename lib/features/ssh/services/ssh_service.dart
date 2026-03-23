@@ -7,8 +7,9 @@ import '../../../core/constants.dart';
 import '../../../data/local/secure_storage.dart';
 import '../../servers/models/server_profile.dart';
 
-// Regex to detect URLs in terminal output
-final _urlRegex = RegExp(r'https?://[^\s\x1b\]]+');
+// Regex to detect URLs - strip ANSI escape sequences first
+final _ansiRegex = RegExp(r'\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[^[](.)');
+final _urlRegex = RegExp(r'https?://[^\s<>"]+');
 
 class SshConnection {
   final SSHClient client;
@@ -73,27 +74,36 @@ class SshService {
     final outputBuffer = StringBuffer();
     DateTime? lastUrlLaunch;
 
+    final Set<String> openedUrls = {};
+
     void detectAndOpenUrl(String text) {
       outputBuffer.write(text);
-      // Only check buffer periodically (when we have enough text)
-      if (outputBuffer.length > 50) {
-        final bufStr = outputBuffer.toString();
-        final matches = _urlRegex.allMatches(bufStr);
+      if (outputBuffer.length > 30) {
+        // Strip ANSI escape sequences before URL detection
+        final clean = outputBuffer.toString().replaceAll(_ansiRegex, '');
+        final matches = _urlRegex.allMatches(clean);
         for (final match in matches) {
-          final url = match.group(0)!;
+          var url = match.group(0)!;
+          // Clean trailing punctuation
+          while (url.endsWith('.') || url.endsWith(',') || url.endsWith(')')) {
+            url = url.substring(0, url.length - 1);
+          }
           // Auto-open Claude/Anthropic login URLs
-          if (url.contains('anthropic.com') || url.contains('claude.ai') || url.contains('console.anthropic')) {
+          if (url.contains('anthropic.com') || url.contains('claude.ai') ||
+              url.contains('claude.com') || url.contains('console.anthropic') ||
+              url.contains('oauth')) {
             final now = DateTime.now();
-            // Debounce: don't open same URL within 5 seconds
-            if (lastUrlLaunch == null || now.difference(lastUrlLaunch!).inSeconds > 5) {
+            if (!openedUrls.contains(url) ||
+                (lastUrlLaunch != null && now.difference(lastUrlLaunch!).inSeconds > 30)) {
               lastUrlLaunch = now;
+              openedUrls.add(url);
               launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
             }
           }
         }
-        // Keep only last 200 chars for next detection
-        if (outputBuffer.length > 200) {
-          final keep = bufStr.substring(bufStr.length - 100);
+        // Keep buffer manageable
+        if (outputBuffer.length > 500) {
+          final keep = clean.substring(clean.length - 200);
           outputBuffer.clear();
           outputBuffer.write(keep);
         }

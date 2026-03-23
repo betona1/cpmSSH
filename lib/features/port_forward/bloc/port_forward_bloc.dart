@@ -95,14 +95,30 @@ class PortForwardBloc extends Bloc<PfEvent, PfState> {
     on<PfAutoStartAll>(_onAutoStartAll);
   }
 
+  bool _firstLoad = true;
+
   Future<void> _onLoad(PfLoad event, Emitter<PfState> emit) async {
     emit(state.copyWith(isLoading: true));
-    final configs = await _repo.getAll();
-    final forwards = configs.map((c) => PortForwardState(
-      config: c,
-      status: _service.isRunning(c.id) ? ForwardStatus.running : ForwardStatus.stopped,
-    )).toList();
-    emit(state.copyWith(forwards: forwards, isLoading: false));
+    try {
+      final configs = await _repo.getAll();
+      final forwards = configs.map((c) => PortForwardState(
+        config: c,
+        status: _service.isRunning(c.id) ? ForwardStatus.running : ForwardStatus.stopped,
+      )).toList();
+      emit(state.copyWith(forwards: forwards, isLoading: false));
+
+      // Auto-start on first load
+      if (_firstLoad) {
+        _firstLoad = false;
+        for (final config in configs) {
+          if (config.autoStart && !_service.isRunning(config.id)) {
+            add(PfStart(config.id));
+          }
+        }
+      }
+    } catch (e) {
+      emit(state.copyWith(isLoading: false));
+    }
   }
 
   Future<void> _onAdd(PfAdd event, Emitter<PfState> emit) async {

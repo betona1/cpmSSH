@@ -33,7 +33,7 @@ class CpmSshTerminalApp extends StatelessWidget {
           BlocProvider(create: (_) => ServerBloc(repository: serverRepository)..add(LoadServers())),
           BlocProvider(create: (_) => SshBloc(sshService: sshService, serverRepository: serverRepository)),
           BlocProvider(create: (_) => CpmBloc()..add(CpmCheckConnection())),
-          BlocProvider(create: (_) => PortForwardBloc(service: pfService, repo: pfRepo)..add(PfLoad())..add(PfAutoStartAll())),
+          BlocProvider(create: (_) => PortForwardBloc(service: pfService, repo: pfRepo)..add(PfLoad())),
         ],
         child: Consumer<ThemeProvider>(
           builder: (context, tp, _) {

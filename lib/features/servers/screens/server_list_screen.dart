@@ -7,6 +7,8 @@ import '../bloc/server_state.dart';
 import '../models/server_profile.dart';
 import '../../ssh/bloc/ssh_bloc.dart';
 import '../../ssh/bloc/ssh_event.dart';
+import '../../ssh/bloc/ssh_state.dart';
+import '../../ssh/screens/terminal_screen.dart';
 
 class ServerListScreen extends StatelessWidget {
   const ServerListScreen({super.key});
@@ -15,12 +17,26 @@ class ServerListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CPM SSH Terminal'),
+        title: const Text('cpmSSH'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: implement search
+          // Active sessions button
+          BlocBuilder<SshBloc, SshState>(
+            builder: (context, sshState) {
+              if (sshState.tabs.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: FilledButton.tonalIcon(
+                  onPressed: () {
+                    context.push('/terminal');
+                  },
+                  icon: const Icon(Icons.terminal, size: 18),
+                  label: Text('${sshState.tabs.length} Session${sshState.tabs.length > 1 ? 's' : ''}'),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    minimumSize: const Size(0, 34),
+                  ),
+                ),
+              );
             },
           ),
         ],

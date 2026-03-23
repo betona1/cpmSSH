@@ -11,5 +11,10 @@ void main() async {
   final themeProvider = ThemeProvider();
   await themeProvider.load();
 
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Flutter Error: ${details.exception}');
+  };
+
   runApp(CpmSshTerminalApp(themeProvider: themeProvider));
 }

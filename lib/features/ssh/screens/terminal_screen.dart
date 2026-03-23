@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:xterm/xterm.dart' hide TerminalThemes;
 import '../../../core/theme/terminal_theme.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../cpm/bloc/cpm_bloc.dart';
+import '../../cpm/bloc/cpm_event.dart';
 import '../../cpm/bloc/cpm_state.dart';
+import '../../servers/screens/server_list_screen.dart';
+import '../../port_forward/screens/port_forward_screen.dart';
+import '../../cpm/screens/cpm_dashboard_screen.dart';
+import '../../cpm/screens/prompt_history_screen.dart';
+import '../../settings/screens/settings_screen.dart';
 import '../bloc/ssh_bloc.dart';
 import '../bloc/ssh_event.dart';
 import '../bloc/ssh_state.dart';
@@ -22,6 +28,8 @@ class TerminalScreen extends StatefulWidget {
 class _TerminalScreenState extends State<TerminalScreen> {
   final _focusNode = FocusNode(debugLabel: 'TerminalFocus');
   final _focusNode2 = FocusNode(debugLabel: 'TerminalFocus2');
+  final _termController = TerminalController();
+  final _termController2 = TerminalController();
   final _inputController = TextEditingController();
   final _inputFocusNode = FocusNode(debugLabel: 'InputBarFocus');
   bool _showInputBar = false;
@@ -48,6 +56,8 @@ class _TerminalScreenState extends State<TerminalScreen> {
   void dispose() {
     _focusNode.dispose();
     _focusNode2.dispose();
+    _termController.dispose();
+    _termController2.dispose();
     _inputController.dispose();
     _inputFocusNode.dispose();
     super.dispose();
@@ -66,6 +76,21 @@ class _TerminalScreenState extends State<TerminalScreen> {
       if (trimmed.isNotEmpty) {
         _inputHistory.insert(0, trimmed);
         if (_inputHistory.length > 50) _inputHistory.removeLast();
+
+        // Send to CPM server if connected
+        final cpmState = context.read<CpmBloc>().state;
+        if (cpmState.isConnected) {
+          // Find project ID from server's cpmProjectId
+          final tab = state.tabs.where((t) => t.id == targetId).firstOrNull;
+          final projectId = tab?.server.cpmProjectId?.toString();
+          if (projectId != null) {
+            context.read<CpmBloc>().add(CpmSendPrompt(
+              content: trimmed,
+              projectId: projectId,
+              tag: 'other',
+            ));
+          }
+        }
       }
       _historyIndex = -1;
 
@@ -95,6 +120,39 @@ class _TerminalScreenState extends State<TerminalScreen> {
         TextPosition(offset: _inputController.text.length),
       );
     });
+  }
+
+  void _autoCopySelection(Terminal terminal, TerminalController ctrl) {
+    final sel = ctrl.selection;
+    if (sel != null) {
+      final text = terminal.buffer.getText(sel);
+      if (text.isNotEmpty) {
+        Clipboard.setData(ClipboardData(text: text));
+      }
+    }
+  }
+
+  Widget _buildTerminalView(Terminal terminal, FocusNode focusNode, TerminalController ctrl, TerminalStyle style, {bool autofocus = false}) {
+    // Auto-copy selection to clipboard (PuTTY style)
+    ctrl.addListener(() => _autoCopySelection(terminal, ctrl));
+
+    return TerminalView(
+      terminal,
+      focusNode: focusNode,
+      controller: ctrl,
+      autofocus: autofocus,
+      hardwareKeyboardOnly: _isDesktop,
+      theme: TerminalThemes.defaultTheme,
+      textStyle: style,
+      padding: EdgeInsets.zero,
+      // Right-click = paste (PuTTY style)
+      onSecondaryTapUp: (details, _) async {
+        final data = await Clipboard.getData(Clipboard.kTextPlain);
+        if (data?.text != null) {
+          terminal.paste(data!.text!);
+        }
+      },
+    );
   }
 
   TerminalStyle _getTerminalStyle(ThemeProvider tp) {
@@ -149,7 +207,20 @@ class _TerminalScreenState extends State<TerminalScreen> {
 
         return Scaffold(
           key: scaffoldKey,
-          endDrawer: _NavigationDrawer(onNavigate: (path) { Navigator.pop(context); context.go(path); }),
+          endDrawer: _NavigationDrawer(onNavigate: (path) {
+            Navigator.pop(context); // close drawer
+            Widget? screen;
+            switch (path) {
+              case '/': screen = const ServerListScreen(); break;
+              case '/tunnel': screen = const PortForwardScreen(); break;
+              case '/cpm': screen = const CpmDashboardScreen(); break;
+              case '/prompts': screen = const PromptHistoryScreen(); break;
+              case '/settings': screen = const SettingsScreen(); break;
+            }
+            if (screen != null) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => screen!));
+            }
+          }),
           body: SafeArea(
             child: Column(
               children: [
@@ -186,15 +257,7 @@ class _TerminalScreenState extends State<TerminalScreen> {
                                       width: _activePanelIndex == 0 ? 2 : 0,
                                     ),
                                   ),
-                                  child: TerminalView(
-                                    state.tabs[0].terminal,
-                                    focusNode: _focusNode,
-                                    autofocus: true,
-                                    hardwareKeyboardOnly: _isDesktop,
-                                    theme: TerminalThemes.defaultTheme,
-                                    textStyle: termStyle,
-                                    padding: EdgeInsets.zero,
-                                  ),
+                                  child: _buildTerminalView(state.tabs[0].terminal, _focusNode, _termController, termStyle, autofocus: true),
                                 ),
                               ),
                             ),
@@ -209,29 +272,14 @@ class _TerminalScreenState extends State<TerminalScreen> {
                                       width: _activePanelIndex == 1 ? 2 : 0,
                                     ),
                                   ),
-                                  child: TerminalView(
-                                    state.tabs[1].terminal,
-                                    focusNode: _focusNode2,
-                                    hardwareKeyboardOnly: _isDesktop,
-                                    theme: TerminalThemes.defaultTheme,
-                                    textStyle: termStyle,
-                                    padding: EdgeInsets.zero,
-                                  ),
+                                  child: _buildTerminalView(state.tabs[1].terminal, _focusNode2, _termController2, termStyle),
                                 ),
                               ),
                             ),
                           ],
                         )
                       : state.activeTab != null
-                          ? TerminalView(
-                              state.activeTab!.terminal,
-                              focusNode: _focusNode,
-                              autofocus: true,
-                              hardwareKeyboardOnly: _isDesktop,
-                              theme: TerminalThemes.defaultTheme,
-                              textStyle: termStyle,
-                              padding: EdgeInsets.zero,
-                            )
+                          ? _buildTerminalView(state.activeTab!.terminal, _focusNode, _termController, termStyle, autofocus: true)
                           : const SizedBox.shrink(),
                 ),
                 // Input bar
@@ -289,57 +337,55 @@ class _Toolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 40,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      height: 44,
+      color: const Color(0xFF1E1E1E),
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: [
-          // Session tabs (file bookmark style)
+          // Session tabs
           Expanded(
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 6, bottom: 2),
               itemCount: tabs.length,
               itemBuilder: (context, index) {
                 final tab = tabs[index];
                 final isActive = tab.id == activeTabId;
-                final colors = [Colors.blue, Colors.green, Colors.orange, Colors.purple, Colors.teal];
+                final colors = [Colors.lightBlue, Colors.lightGreen, Colors.amber, Colors.purpleAccent, Colors.tealAccent];
                 final tabColor = colors[index % colors.length];
                 return Padding(
-                  padding: const EdgeInsets.only(right: 2),
+                  padding: const EdgeInsets.only(right: 4),
                   child: GestureDetector(
                     onTap: () => context.read<SshBloc>().add(SshSwitchTab(tab.id)),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isActive ? Theme.of(context).colorScheme.surface : Theme.of(context).colorScheme.surfaceContainerHigh,
+                        color: isActive ? const Color(0xFF2D2D2D) : const Color(0xFF151515),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(8),
                           topRight: Radius.circular(8),
                         ),
                         border: Border(
                           top: BorderSide(color: tabColor, width: 3),
-                          left: BorderSide(color: isActive ? Theme.of(context).dividerColor : Colors.transparent, width: 0.5),
-                          right: BorderSide(color: isActive ? Theme.of(context).dividerColor : Colors.transparent, width: 0.5),
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.computer, size: 13, color: tabColor),
-                          const SizedBox(width: 6),
+                          Icon(Icons.computer, size: 14, color: tabColor),
+                          const SizedBox(width: 8),
                           Text(
                             tab.server.name,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: 13,
                               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                              color: isActive ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onSurface.withAlpha(180),
+                              color: isActive ? Colors.white : Colors.white60,
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 10),
                           InkWell(
                             onTap: () => context.read<SshBloc>().add(SshDisconnect(tab.id)),
-                            child: Icon(Icons.close, size: 13, color: Colors.grey[500]),
+                            child: Icon(Icons.close, size: 14, color: isActive ? Colors.white54 : Colors.white30),
                           ),
                         ],
                       ),

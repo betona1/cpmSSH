@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class TerminalThemes {
   static const TerminalTheme monokai = TerminalTheme(
     cursor: Color(0xFFF8F8F0),
-    selection: Color(0xFF4477AA),
+    selection: Color(0x604488CC),
     foreground: Color(0xFFF8F8F2),
     background: Color(0xFF272822),
     black: Color(0xFF272822),
@@ -30,7 +30,7 @@ class TerminalThemes {
 
   static const TerminalTheme solarizedDark = TerminalTheme(
     cursor: Color(0xFF839496),
-    selection: Color(0xFF073642),
+    selection: Color(0x604488CC),
     foreground: Color(0xFF839496),
     background: Color(0xFF002B36),
     black: Color(0xFF073642),
