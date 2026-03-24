@@ -10,10 +10,10 @@ import 'package:crypto/crypto.dart';
 class SecureStorageService {
   static const _storage = FlutterSecureStorage();
 
+  // macOS Keychain은 -34018 에러가 있어서 SharedPreferences 사용
+  // Windows/Linux는 flutter_secure_storage가 안정적이므로 그대로 사용
   static bool get _useSharedPrefs =>
-      defaultTargetPlatform == TargetPlatform.macOS ||
-      defaultTargetPlatform == TargetPlatform.windows ||
-      defaultTargetPlatform == TargetPlatform.linux;
+      defaultTargetPlatform == TargetPlatform.macOS;
 
   // --- Write ---
   static Future<void> savePassword(String serverId, String password) async {
@@ -37,6 +37,28 @@ class SecureStorageService {
   static Future<void> deleteCredentials(String serverId) async {
     await _delete('server_${serverId}_password');
     await _delete('server_${serverId}_privatekey');
+  }
+
+  /// 기존 SharedPreferences 데이터를 flutter_secure_storage로 마이그레이션
+  static Future<void> migrateFromSharedPrefs() async {
+    if (_useSharedPrefs) return; // macOS는 여전히 SharedPreferences 사용
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys().where((k) => k.startsWith('_sec_')).toList();
+    for (final prefKey in keys) {
+      final encoded = prefs.getString(prefKey);
+      if (encoded == null) continue;
+      final realKey = prefKey.substring(5); // '_sec_' 제거
+      String value;
+      try {
+        value = utf8.decode(base64Decode(encoded));
+      } catch (_) {
+        value = encoded;
+      }
+      // flutter_secure_storage로 복사
+      await _storage.write(key: realKey, value: value);
+      // 마이그레이션 후 SharedPreferences에서 제거
+      await prefs.remove(prefKey);
+    }
   }
 
   // --- Internal ---

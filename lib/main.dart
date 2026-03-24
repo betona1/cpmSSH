@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite/sqflite.dart' as sqflite_mobile;
 import 'core/theme/theme_provider.dart';
+import 'data/local/secure_storage.dart';
 import 'app.dart';
 
 void main() async {
@@ -18,6 +19,9 @@ void main() async {
     // 모바일(iOS/Android): 네이티브 sqflite 팩토리 명시적 설정
     databaseFactory = sqflite_mobile.databaseFactory;
   }
+
+  // 기존 SharedPreferences 비밀번호를 secure storage로 마이그레이션
+  await SecureStorageService.migrateFromSharedPrefs();
 
   final themeProvider = ThemeProvider();
   await themeProvider.load();
