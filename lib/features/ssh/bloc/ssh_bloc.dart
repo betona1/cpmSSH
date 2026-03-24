@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../services/ssh_service.dart';
@@ -41,10 +42,12 @@ class SshBloc extends Bloc<SshEvent, SshState> {
         isConnecting: false,
       ));
       await _serverRepository.updateLastConnected(event.server.id);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('SSH Connection Error: $e');
+      debugPrint('Stack: $stackTrace');
       emit(state.copyWith(
         isConnecting: false,
-        error: 'Connection failed: ${e.toString()}',
+        error: 'Connection failed:\n${e.toString()}\n\nHost: ${event.server.host}:${event.server.port}\nUser: ${event.server.username}',
       ));
     }
   }

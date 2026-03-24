@@ -16,6 +16,9 @@ class ServerProfile extends Equatable {
   final bool isFavorite;
   final DateTime? lastConnectedAt;
   final DateTime createdAt;
+  // tmux 세션 공유
+  final bool tmuxEnabled;
+  final String? tmuxSession;
 
   const ServerProfile({
     required this.id,
@@ -31,6 +34,8 @@ class ServerProfile extends Equatable {
     this.isFavorite = false,
     this.lastConnectedAt,
     required this.createdAt,
+    this.tmuxEnabled = false,
+    this.tmuxSession,
   });
 
   ServerProfile copyWith({
@@ -47,6 +52,8 @@ class ServerProfile extends Equatable {
     bool? isFavorite,
     DateTime? lastConnectedAt,
     DateTime? createdAt,
+    bool? tmuxEnabled,
+    String? tmuxSession,
   }) {
     return ServerProfile(
       id: id ?? this.id,
@@ -62,6 +69,8 @@ class ServerProfile extends Equatable {
       isFavorite: isFavorite ?? this.isFavorite,
       lastConnectedAt: lastConnectedAt ?? this.lastConnectedAt,
       createdAt: createdAt ?? this.createdAt,
+      tmuxEnabled: tmuxEnabled ?? this.tmuxEnabled,
+      tmuxSession: tmuxSession ?? this.tmuxSession,
     );
   }
 
@@ -80,6 +89,8 @@ class ServerProfile extends Equatable {
       'is_favorite': isFavorite ? 1 : 0,
       'last_connected_at': lastConnectedAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
+      'tmux_enabled': tmuxEnabled ? 1 : 0,
+      'tmux_session': tmuxSession,
     };
   }
 
@@ -103,9 +114,11 @@ class ServerProfile extends Equatable {
           ? DateTime.parse(map['last_connected_at'] as String)
           : null,
       createdAt: DateTime.parse(map['created_at'] as String),
+      tmuxEnabled: (map['tmux_enabled'] as int?) == 1,
+      tmuxSession: map['tmux_session'] as String?,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, host, port, username, authMethod, group];
+  List<Object?> get props => [id, name, host, port, username, authMethod, group, tmuxEnabled, tmuxSession];
 }

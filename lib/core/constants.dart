@@ -3,7 +3,7 @@ class AppConstants {
   static const String appVersion = '1.0.0';
 
   // Default SSH settings
-  static const int defaultSshPort = 10022;
+  static const int defaultSshPort = 22;
   static const int sshConnectTimeoutSeconds = 10;
   static const int sshKeepAliveIntervalSeconds = 30;
   static const int terminalScrollbackLines = 10000;
@@ -16,7 +16,7 @@ class AppConstants {
 }
 
 class CpmConfig {
-  static String baseUrl = 'http://localhost:9200';
-  static String wsUrl = 'ws://localhost:9200/ws/';
+  static String baseUrl = 'http://192.168.219.100:9200';
+  static String wsUrl = 'ws://192.168.219.100:9200/ws/';
   static int port = 9200;
 }

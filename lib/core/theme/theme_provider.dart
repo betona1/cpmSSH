@@ -5,7 +5,7 @@ class ThemeProvider extends ChangeNotifier {
   ThemeMode _mode = ThemeMode.dark;
   String _fontFamily = 'Malgun Gothic';
   double _fontSize = 14.0;
-  int _defaultPort = 10022;
+  int _defaultPort = 22;
   int _keepAliveSeconds = 30;
   int _connectTimeoutSeconds = 10;
 
@@ -23,7 +23,7 @@ class ThemeProvider extends ChangeNotifier {
     _mode = (prefs.getString('theme_mode') ?? 'dark') == 'light' ? ThemeMode.light : ThemeMode.dark;
     _fontFamily = prefs.getString('font_family') ?? 'Malgun Gothic';
     _fontSize = prefs.getDouble('terminal_font_size') ?? 14.0;
-    _defaultPort = prefs.getInt('default_port') ?? 10022;
+    _defaultPort = prefs.getInt('default_port') ?? 22;
     _keepAliveSeconds = prefs.getInt('keep_alive_seconds') ?? 30;
     _connectTimeoutSeconds = prefs.getInt('connect_timeout_seconds') ?? 10;
     notifyListeners();

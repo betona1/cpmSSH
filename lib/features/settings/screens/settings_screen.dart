@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants.dart';
@@ -16,12 +18,40 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  static const _imeChannel = MethodChannel('com.betona1.cpm_ssh_terminal/ime');
   final _cpmUrlController = TextEditingController();
+  bool _floatingButtonRunning = false;
 
   @override
   void initState() {
     super.initState();
     _loadCpmUrl();
+    _checkFloatingButton();
+  }
+
+  Future<void> _checkFloatingButton() async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      final running = await _imeChannel.invokeMethod<bool>('isFloatingButtonRunning') ?? false;
+      if (mounted) setState(() => _floatingButtonRunning = running);
+    } catch (_) {}
+  }
+
+  Future<void> _toggleFloatingButton(bool enable) async {
+    try {
+      if (enable) {
+        final result = await _imeChannel.invokeMethod<bool>('startFloatingButton') ?? false;
+        if (!result && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('오버레이 권한을 허용해주세요. 허용 후 다시 켜주세요.')),
+          );
+        }
+        setState(() => _floatingButtonRunning = result);
+      } else {
+        await _imeChannel.invokeMethod('stopFloatingButton');
+        setState(() => _floatingButtonRunning = false);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadCpmUrl() async {
@@ -176,6 +206,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const Divider(),
+
+          // ─── 한/영 Floating Button (Android only) ───
+          if (defaultTargetPlatform == TargetPlatform.android) ...[
+            _Section('한/영 전환'),
+            SwitchListTile(
+              title: const Text('플로팅 한/영 버튼'),
+              subtitle: const Text('모든 앱 위에 한/영 전환 버튼 표시'),
+              secondary: const Icon(Icons.language),
+              value: _floatingButtonRunning,
+              onChanged: _toggleFloatingButton,
+            ),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                '버튼을 드래그하여 위치 이동 가능. 터치하면 한/영 전환.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            const Divider(),
+          ],
 
           // ─── About ───
           _Section('About'),

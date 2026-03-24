@@ -35,8 +35,14 @@ class SshService {
 
     if (server.authMethod == AuthMethod.password) {
       password = await SecureStorageService.getPassword(server.id);
+      if (password == null || password.isEmpty) {
+        throw Exception('비밀번호가 저장되어 있지 않습니다. 서버를 편집하여 비밀번호를 입력해주세요.');
+      }
     } else {
       privateKey = await SecureStorageService.getPrivateKey(server.id);
+      if (privateKey == null || privateKey.isEmpty) {
+        throw Exception('Private Key가 저장되어 있지 않습니다. 서버를 편집하여 키 파일을 선택해주세요.');
+      }
     }
 
     final socket = await SSHSocket.connect(
@@ -127,6 +133,18 @@ class SshService {
     terminal.onOutput = (data) {
       session.stdin.add(Uint8List.fromList(utf8.encode(data)));
     };
+
+    // tmux 세션 자동 연결: 있으면 attach, 없으면 새로 생성
+    if (server.tmuxEnabled) {
+      final sessionName = server.tmuxSession?.isNotEmpty == true
+          ? server.tmuxSession!
+          : 'cpm-shared';
+      // -A: attach if exists, create if not
+      // -s: session name
+      session.stdin.add(
+        Uint8List.fromList(utf8.encode('tmux new-session -As $sessionName\n')),
+      );
+    }
 
     // Execute initial directory change
     if (server.initialDir != null && server.initialDir!.isNotEmpty) {

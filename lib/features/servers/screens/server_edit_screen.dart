@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import '../../../core/theme/theme_provider.dart';
 import '../bloc/server_bloc.dart';
 import '../bloc/server_event.dart';
 import '../models/server_profile.dart';
@@ -22,21 +24,25 @@ class _ServerEditScreenState extends State<ServerEditScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _hostController = TextEditingController();
-  final _portController = TextEditingController(text: '22');
+  late final TextEditingController _portController;
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _initialDirController = TextEditingController();
   final _initCommandController = TextEditingController();
   final _groupController = TextEditingController();
+  final _tmuxSessionController = TextEditingController(text: 'cpm-shared');
 
   AuthMethod _authMethod = AuthMethod.password;
   String? _privateKeyContent;
   String? _privateKeyFileName;
   bool _isEditing = false;
+  bool _tmuxEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    final tp = Provider.of<ThemeProvider>(context, listen: false);
+    _portController = TextEditingController(text: '${tp.defaultPort}');
     if (widget.serverId != null) {
       _isEditing = true;
       _loadServer();
@@ -56,6 +62,8 @@ class _ServerEditScreenState extends State<ServerEditScreen> {
         _initialDirController.text = server.initialDir ?? '';
         _initCommandController.text = server.initCommand ?? '';
         _groupController.text = server.group ?? '';
+        _tmuxEnabled = server.tmuxEnabled;
+        _tmuxSessionController.text = server.tmuxSession ?? 'cpm-shared';
       });
     }
   }
@@ -70,6 +78,7 @@ class _ServerEditScreenState extends State<ServerEditScreen> {
     _initialDirController.dispose();
     _initCommandController.dispose();
     _groupController.dispose();
+    _tmuxSessionController.dispose();
     super.dispose();
   }
 
@@ -98,13 +107,17 @@ class _ServerEditScreenState extends State<ServerEditScreen> {
       group: _groupController.text.trim().isEmpty ? null : _groupController.text.trim(),
       initialDir: _initialDirController.text.trim().isEmpty ? null : _initialDirController.text.trim(),
       initCommand: _initCommandController.text.trim().isEmpty ? null : _initCommandController.text.trim(),
+      tmuxEnabled: _tmuxEnabled,
+      tmuxSession: _tmuxSessionController.text.trim().isEmpty ? null : _tmuxSessionController.text.trim(),
       createdAt: DateTime.now(),
     );
 
     if (_isEditing) {
+      // 편집 시 비밀번호가 비어있으면 기존 값 유지 (null 전달)
+      final pw = _passwordController.text.isNotEmpty ? _passwordController.text : null;
       context.read<ServerBloc>().add(UpdateServer(
             server,
-            password: _authMethod == AuthMethod.password ? _passwordController.text : null,
+            password: _authMethod == AuthMethod.password ? pw : null,
             privateKey: _privateKeyContent,
           ));
     } else {
@@ -222,6 +235,28 @@ class _ServerEditScreenState extends State<ServerEditScreen> {
                     ),
                 ],
               ),
+            const SizedBox(height: 24),
+            Text('tmux Session Sharing', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              title: const Text('tmux 세션 공유'),
+              subtitle: const Text('여러 단말기에서 같은 터미널 세션 공유'),
+              value: _tmuxEnabled,
+              onChanged: (v) => setState(() => _tmuxEnabled = v),
+              secondary: const Icon(Icons.screen_share),
+            ),
+            if (_tmuxEnabled) ...[
+              const SizedBox(height: 8),
+              TextFormField(
+                controller: _tmuxSessionController,
+                decoration: const InputDecoration(
+                  labelText: 'tmux Session Name',
+                  hintText: 'cpm-shared',
+                  prefixIcon: Icon(Icons.terminal),
+                  helperText: '같은 이름으로 연결하면 화면이 공유됩니다',
+                ),
+              ),
+            ],
             const SizedBox(height: 24),
             Text('Optional', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),

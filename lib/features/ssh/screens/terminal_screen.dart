@@ -457,7 +457,7 @@ class _Toolbar extends StatelessWidget {
 // ═══════════════════════════════════════════
 // Input Bar with history, expand, shift+enter
 // ═══════════════════════════════════════════
-class _InputBar extends StatelessWidget {
+class _InputBar extends StatefulWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
   final int lines;
@@ -474,32 +474,84 @@ class _InputBar extends StatelessWidget {
   });
 
   @override
+  State<_InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<_InputBar> {
+  static const _imeChannel = MethodChannel('com.betona1.cpm_ssh_terminal/ime');
+  bool _isKorean = false;
+
+  Future<void> _toggleKoreanEnglish() async {
+    try {
+      await _imeChannel.invokeMethod('toggleKoreanEnglish');
+      setState(() => _isKorean = !_isKorean);
+    } catch (_) {
+      // 플랫폼이 지원하지 않는 경우 무시
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final isAndroid = defaultTargetPlatform == TargetPlatform.android;
+
     return Container(
       color: Theme.of(context).colorScheme.surfaceContainerHighest,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // 한/영 전환 버튼 (Android만)
+          if (isAndroid)
+            GestureDetector(
+              onTap: _toggleKoreanEnglish,
+              child: Container(
+                width: 36,
+                height: 36,
+                margin: const EdgeInsets.only(right: 4),
+                decoration: BoxDecoration(
+                  color: _isKorean
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Theme.of(context).colorScheme.surfaceContainerHigh,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isKorean
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.outline,
+                    width: 1.5,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _isKorean ? '한' : 'A',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _isKorean
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ),
           // Expand button
           IconButton(
-            icon: Icon(lines >= 3 ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up, size: 18),
-            onPressed: onExpand,
-            tooltip: lines >= 3 ? 'Collapse' : 'Expand',
+            icon: Icon(widget.lines >= 3 ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_up, size: 18),
+            onPressed: widget.onExpand,
+            tooltip: widget.lines >= 3 ? 'Collapse' : 'Expand',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32),
           ),
           // History buttons
           IconButton(
             icon: const Icon(Icons.arrow_upward, size: 16),
-            onPressed: onHistoryUp,
+            onPressed: widget.onHistoryUp,
             tooltip: 'Previous',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28),
           ),
           IconButton(
             icon: const Icon(Icons.arrow_downward, size: 16),
-            onPressed: onHistoryDown,
+            onPressed: widget.onHistoryDown,
             tooltip: 'Next',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 28),
@@ -513,19 +565,19 @@ class _InputBar extends StatelessWidget {
                 // We handle shift+enter in the TextField's onSubmitted and keyEvent
               },
               child: TextField(
-                controller: controller,
-                focusNode: focusNode,
+                controller: widget.controller,
+                focusNode: widget.focusNode,
                 autofocus: true,
-                maxLines: lines,
+                maxLines: widget.lines,
                 style: const TextStyle(fontFamily: 'Consolas', fontSize: 14),
                 decoration: InputDecoration(
-                  hintText: lines > 1 ? 'Shift+Enter: newline, Enter: send' : 'Type here (Korean OK)...',
+                  hintText: widget.lines > 1 ? 'Shift+Enter: newline, Enter: send' : 'Type here (Korean OK)...',
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   border: const OutlineInputBorder(),
                 ),
                 onSubmitted: (text) {
-                  if (text.isNotEmpty) onSend(text);
+                  if (text.isNotEmpty) widget.onSend(text);
                 },
               ),
             ),
@@ -534,7 +586,7 @@ class _InputBar extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.send, size: 18),
             onPressed: () {
-              if (controller.text.isNotEmpty) onSend(controller.text);
+              if (widget.controller.text.isNotEmpty) widget.onSend(widget.controller.text);
             },
             tooltip: 'Send',
             padding: EdgeInsets.zero,
@@ -542,7 +594,7 @@ class _InputBar extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.close, size: 18),
-            onPressed: onClose,
+            onPressed: widget.onClose,
             tooltip: 'Close',
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32),

@@ -1,10 +1,11 @@
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite_common/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 class DatabaseHelper {
   static Database? _database;
   static const String _dbName = 'cpm_ssh_terminal.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   static Future<Database> get database async {
     if (_database != null) return _database!;
@@ -13,15 +14,14 @@ class DatabaseHelper {
   }
 
   static Future<Database> _initDatabase() async {
-    sqfliteFfiInit();
-    final databaseFactory = databaseFactoryFfi;
     final dir = await getApplicationSupportDirectory();
-    final path = '${dir.path}/$_dbName';
+    final path = p.join(dir.path, _dbName);
     return await databaseFactory.openDatabase(
       path,
       options: OpenDatabaseOptions(
         version: _dbVersion,
         onCreate: _onCreate,
+        onUpgrade: _onUpgrade,
       ),
     );
   }
@@ -41,8 +41,17 @@ class DatabaseHelper {
         cpm_project_id INTEGER,
         is_favorite INTEGER NOT NULL DEFAULT 0,
         last_connected_at TEXT,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        tmux_enabled INTEGER NOT NULL DEFAULT 0,
+        tmux_session TEXT
       )
     ''');
+  }
+
+  static Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE servers ADD COLUMN tmux_enabled INTEGER NOT NULL DEFAULT 0');
+      await db.execute('ALTER TABLE servers ADD COLUMN tmux_session TEXT');
+    }
   }
 }

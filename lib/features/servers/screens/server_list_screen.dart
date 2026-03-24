@@ -139,8 +139,19 @@ class _ServerCard extends StatelessWidget {
           children: [
             if (server.isFavorite)
               Icon(Icons.star, color: Theme.of(context).colorScheme.primary, size: 20),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right),
+            IconButton(
+              icon: const Icon(Icons.edit, size: 20),
+              tooltip: 'Edit',
+              onPressed: () => context.push('/server/edit/${server.id}'),
+            ),
+            IconButton(
+              icon: const Icon(Icons.play_arrow, color: Colors.green),
+              tooltip: 'Connect',
+              onPressed: () {
+                context.read<SshBloc>().add(SshConnect(server));
+                context.push('/terminal');
+              },
+            ),
           ],
         ),
         onTap: () {

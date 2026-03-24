@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../repository/server_repository.dart';
 import 'server_event.dart';
@@ -28,21 +29,27 @@ class ServerBloc extends Bloc<ServerEvent, ServerState> {
 
   Future<void> _onAdd(AddServer event, Emitter<ServerState> emit) async {
     try {
+      debugPrint('[ServerBloc] Adding server: ${event.server.name} ${event.server.host}:${event.server.port}');
       await _repository.insert(event.server,
           password: event.password, privateKey: event.privateKey);
+      debugPrint('[ServerBloc] Server added successfully');
       add(LoadServers());
-    } catch (e) {
-      emit(ServerError(e.toString()));
+    } catch (e, st) {
+      debugPrint('[ServerBloc] Add error: $e\n$st');
+      emit(ServerError('서버 저장 실패: $e'));
     }
   }
 
   Future<void> _onUpdate(UpdateServer event, Emitter<ServerState> emit) async {
     try {
+      debugPrint('[ServerBloc] Updating server: ${event.server.name}');
       await _repository.update(event.server,
           password: event.password, privateKey: event.privateKey);
+      debugPrint('[ServerBloc] Server updated successfully');
       add(LoadServers());
-    } catch (e) {
-      emit(ServerError(e.toString()));
+    } catch (e, st) {
+      debugPrint('[ServerBloc] Update error: $e\n$st');
+      emit(ServerError('서버 수정 실패: $e'));
     }
   }
 
