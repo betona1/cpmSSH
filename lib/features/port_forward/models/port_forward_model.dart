@@ -16,6 +16,7 @@ class PortForwardConfig extends Equatable {
   final String remoteHost;
   final int remotePort;
   final bool autoStart;
+  final bool allowLan;
   final DateTime createdAt;
 
   const PortForwardConfig({
@@ -29,10 +30,11 @@ class PortForwardConfig extends Equatable {
     required this.remoteHost,
     required this.remotePort,
     this.autoStart = false,
+    this.allowLan = false,
     required this.createdAt,
   });
 
-  String get summary => 'localhost:$localPort → $remoteHost:$remotePort';
+  String get summary => '${allowLan ? "0.0.0.0" : "localhost"}:$localPort → $remoteHost:$remotePort';
   String get gateway => '$gatewayUsername@$gatewayHost:$gatewayPort';
 
   Map<String, dynamic> toMap() => {
@@ -46,6 +48,7 @@ class PortForwardConfig extends Equatable {
         'remote_host': remoteHost,
         'remote_port': remotePort,
         'auto_start': autoStart ? 1 : 0,
+        'allow_lan': allowLan ? 1 : 0,
         'created_at': createdAt.toIso8601String(),
       };
 
@@ -63,6 +66,7 @@ class PortForwardConfig extends Equatable {
         remoteHost: m['remote_host'] as String,
         remotePort: m['remote_port'] as int,
         autoStart: (m['auto_start'] as int?) == 1,
+        allowLan: (m['allow_lan'] as int?) == 1,
         createdAt: DateTime.parse(m['created_at'] as String),
       );
 

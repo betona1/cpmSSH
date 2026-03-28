@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../bloc/port_forward_bloc.dart';
@@ -12,10 +13,27 @@ class PortForwardScreen extends StatefulWidget {
 }
 
 class _PortForwardScreenState extends State<PortForwardScreen> {
+  List<String> _ipAddresses = [];
+
   @override
   void initState() {
     super.initState();
     context.read<PortForwardBloc>().add(PfLoad());
+    _loadIpAddresses();
+  }
+
+  Future<void> _loadIpAddresses() async {
+    final interfaces = await NetworkInterface.list(
+      type: InternetAddressType.IPv4,
+      includeLoopback: false,
+    );
+    if (mounted) {
+      setState(() {
+        _ipAddresses = interfaces
+            .expand((i) => i.addresses.map((a) => '${i.name}: ${a.address}'))
+            .toList();
+      });
+    }
   }
 
   @override
@@ -30,7 +48,43 @@ class _PortForwardScreenState extends State<PortForwardScreen> {
           ),
         ],
       ),
-      body: BlocBuilder<PortForwardBloc, PfState>(
+      body: Column(
+        children: [
+          if (_ipAddresses.isNotEmpty)
+            Card(
+              margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Icon(Icons.wifi, size: 20, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('My IP', style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          )),
+                          const SizedBox(height: 2),
+                          ..._ipAddresses.map((ip) => Text(
+                            ip,
+                            style: const TextStyle(fontSize: 12, fontFamily: 'monospace'),
+                          )),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 18),
+                      onPressed: _loadIpAddresses,
+                      tooltip: 'Refresh IP',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          Expanded(child: BlocBuilder<PortForwardBloc, PfState>(
         builder: (context, state) {
           if (state.isLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -63,6 +117,8 @@ class _PortForwardScreenState extends State<PortForwardScreen> {
             },
           );
         },
+      )),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -134,7 +190,7 @@ class _ForwardCard extends StatelessWidget {
                 // Forward route
                 Row(
                   children: [
-                    _Chip('localhost:${c.localPort}', Colors.blue),
+                    _Chip('${c.allowLan ? "0.0.0.0" : "localhost"}:${c.localPort}', Colors.blue),
                     const Padding(
                       padding: EdgeInsets.symmetric(horizontal: 6),
                       child: Icon(Icons.arrow_forward, size: 14),

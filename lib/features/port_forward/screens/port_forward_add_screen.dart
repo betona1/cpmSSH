@@ -26,6 +26,7 @@ class _PortForwardAddScreenState extends State<PortForwardAddScreen> {
   final _remotePortCtl = TextEditingController(text: '22');
 
   bool _useKeyFile = false;
+  bool _allowLan = false;
   String? _keyFileContent;
   String? _keyFileName;
   bool get _isEditing => widget.editConfig != null;
@@ -42,6 +43,7 @@ class _PortForwardAddScreenState extends State<PortForwardAddScreen> {
       _localPortCtl.text = c.localPort.toString();
       _remoteHostCtl.text = c.remoteHost;
       _remotePortCtl.text = c.remotePort.toString();
+      _allowLan = c.allowLan;
     }
   }
 
@@ -81,6 +83,7 @@ class _PortForwardAddScreenState extends State<PortForwardAddScreen> {
       localPort: int.tryParse(_localPortCtl.text) ?? 0,
       remoteHost: _remoteHostCtl.text.trim(),
       remotePort: int.tryParse(_remotePortCtl.text) ?? 22,
+      allowLan: _allowLan,
       createdAt: _isEditing ? widget.editConfig!.createdAt : DateTime.now(),
     );
 
@@ -209,9 +212,9 @@ class _PortForwardAddScreenState extends State<PortForwardAddScreen> {
                         children: [
                           const Icon(Icons.computer, size: 32),
                           const SizedBox(height: 4),
-                          const Text('Your PC', style: TextStyle(fontSize: 11)),
+                          Text(_allowLan ? 'LAN' : 'Your PC', style: const TextStyle(fontSize: 11)),
                           Text(
-                            'localhost:${_localPortCtl.text.isEmpty ? "?" : _localPortCtl.text}',
+                            '${_allowLan ? "0.0.0.0" : "localhost"}:${_localPortCtl.text.isEmpty ? "?" : _localPortCtl.text}',
                             style: const TextStyle(fontSize: 10, fontFamily: 'monospace', color: Colors.blue),
                           ),
                         ],
@@ -253,6 +256,19 @@ class _PortForwardAddScreenState extends State<PortForwardAddScreen> {
             ),
             const SizedBox(height: 12),
 
+            SwitchListTile(
+              title: const Text('Allow LAN Access'),
+              subtitle: Text(
+                _allowLan
+                    ? 'Bind 0.0.0.0 — accessible from other devices on the network'
+                    : 'Bind localhost — only this device',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              secondary: Icon(_allowLan ? Icons.lan : Icons.computer),
+              value: _allowLan,
+              onChanged: (v) => setState(() => _allowLan = v),
+            ),
+            const SizedBox(height: 12),
             TextFormField(
               controller: _localPortCtl,
               decoration: const InputDecoration(

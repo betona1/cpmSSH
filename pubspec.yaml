@@ -1,7 +1,7 @@
 name: cpm_ssh_terminal
 description: CPM과 통합된 Claude Code 전용 SSH 터미널
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.2.0+2002
 
 environment:
   sdk: ^3.11.3

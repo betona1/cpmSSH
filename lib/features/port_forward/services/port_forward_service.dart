@@ -82,7 +82,7 @@ class PortForwardService {
     ServerSocket serverSocket;
     try {
       serverSocket = await ServerSocket.bind(
-        InternetAddress.loopbackIPv4,
+        config.allowLan ? InternetAddress.anyIPv4 : InternetAddress.loopbackIPv4,
         config.localPort,
       );
     } catch (e) {
